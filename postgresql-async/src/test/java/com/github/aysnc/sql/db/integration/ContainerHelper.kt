@@ -1,11 +1,15 @@
 package com.github.aysnc.sql.db.integration
 
 import com.github.jasync.sql.db.Configuration
+import com.github.jasync.sql.db.SSLConfiguration
 import com.github.jasync.sql.db.postgresql.PostgreSQLConnection
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.testcontainers.containers.BindMode
 import org.testcontainers.containers.PostgreSQLContainer
 import java.util.concurrent.TimeUnit
+
+import java.nio.file.Paths
+import java.io.File
 
 private val logger = KotlinLogging.logger {}
 
@@ -29,11 +33,32 @@ object ContainerHelper {
         val password = System.getenv("PGPASSWORD") ?: "root"
         val database = System.getenv("PGDATABASE") ?: "netty_driver_test"
 
-        defaultConfiguration = Configuration(username, host, port, password, database)
+        val sslConfigProperties = HashMap<String, String>()
+        sslConfigProperties["sslmode"] = System.getenv("PGSSLMODE") ?: "disable"
+        sslConfigProperties["sslrootcert"] = System.getenv("PGSSLROOTCERT") ?: ""
+
+        val path = Paths.get("").toAbsolutePath().toString()
+         logger.info("darryl: path: " + path)
+
+         var file = File("/mnt/data1/jasync-sql/postgresql-async/ca.crt")
+         var fileExists = file.exists()
+         if(fileExists){
+             print("darryl: file exists.")
+         } else {
+             print("darryl: file does not exist.")
+         }
+
+        logger.info("darryl: sslrootcert: " + sslConfigProperties.getOrDefault("sslrootcert", "didn't work"))
+        logger.info("darryl: sslmode: " + sslConfigProperties.getOrDefault("sslmode", "didn't work"))
+
+        defaultConfiguration = Configuration(username, host, port, password, database, SSLConfiguration(sslConfigProperties))
         try {
+            logger.info("darryl: A")
             PostgreSQLConnection(defaultConfiguration).connect().get(1, TimeUnit.SECONDS)
+            logger.info("darryl: B")
             logger.info("Using local postgresql instance $defaultConfiguration")
         } catch (e: Exception) {
+            logger.info("darryl: exception: $e")
             // If local instance isn't running, start a docker postgresql on random port
             if (postgresql == null) {
                 configurePostgres()
